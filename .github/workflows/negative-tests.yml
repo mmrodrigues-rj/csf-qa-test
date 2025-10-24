@@ -30,8 +30,8 @@ jobs:
       - name: Run Negative API Tests (JUnit)
         run: |
           mkdir -p reports
-          newman run postman/collections/usuarios.postman_collection.json \
-            -e postman/environments/hml.postman_environment.json \
+          newman run postman/collection.json \
+            - e postman/environment.json \
             --folder "Negative Tests" \
             --reporters cli,junit \
             --reporter-junit-export reports/neg-results-${{ matrix.node-version }}.xml
@@ -39,8 +39,8 @@ jobs:
       - name: Generate HTML Report (htmlextra)
         if: always()
         run: |
-          newman run postman/collections/usuarios.postman_collection.json \
-            -e postman/environments/hml.postman_environment.json \
+          newman run postman/collection.json \
+            -e postman/environment.json \
             --folder "Negative Tests" \
             -r htmlextra \
             --reporter-htmlextra-export reports/neg-api-report-${{ matrix.node-version }}.html

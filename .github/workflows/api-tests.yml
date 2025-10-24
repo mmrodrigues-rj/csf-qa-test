@@ -30,8 +30,8 @@ jobs:
 
       - name: Run API Tests
         run: |
-          newman run postman/collections/usuarios.postman_collection.json \
-            -e postman/environments/hml.postman_environment.json \
+          newman run postman/collection.json \
+            -e postman/environment.json \
             --reporters cli,junit \
             --reporter-junit-export reports/results-${{ matrix.node-version }}.xml
 
@@ -40,8 +40,8 @@ jobs:
         if: always()
         run: |
           mkdir -p reports
-          newman run postman/collections/usuarios.postman_collection.json \
-            -e postman/environments/hml.postman_environment.json \
+          newman run postman/collection.json \
+            -e postman/environment.json \
             -r htmlextra --reporter-htmlextra-export reports/api-report-${{ matrix.node-version }}.html
 
       - name: Upload HTML Report
