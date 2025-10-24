@@ -2,9 +2,9 @@ name: 🔍 API Tests - CSF-QA-TEST
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master , executando]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, executando]
   workflow_dispatch: # Permite execução manual pelo GitHub UI
 
 jobs:

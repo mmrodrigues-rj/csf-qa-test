@@ -1,9 +1,13 @@
 name: ❌ Negative API Tests - CSF-QA-TEST
 
 on:
+  push:
+    branches: [ main, master, executando ]
+  pull_request:
+    branches: [ main, master, executando ]
   workflow_dispatch:      # executar manualmente
   schedule:
-    - cron: "0 3 * * *"   # diário às 03:00 UTC (ajuste se quiser)
+    - cron: "0 3 * * *"   # diário às 03:00 UTC
 
 jobs:
   run-negative-api-tests:
