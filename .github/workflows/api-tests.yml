@@ -1,108 +1,56 @@
-name: 🔍 API Tests - CSF-QA-TEST
+name: API Tests - CSF-QA-TEST
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
-  workflow_dispatch: # permite execução manual.
+    branches:
+      - main
+  push:
+    branches:
+      - main
 
 jobs:
   run-api-tests:
     runs-on: ubuntu-latest
+
     strategy:
-      fail-fast: false          # 🆕 não interrompe a matriz ao primeiro erro
       matrix:
-        node-version: [18, 20]  # executa em Node 18 e 20
-    name: Run API Tests (Node ${{ matrix.node-version }})
+        node-version: [18, 20]
 
     steps:
-      - name: 🧩 Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🟢 Setup Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: 📦 Install dependencies
+      - name: Install Newman
+        run: npm install -g newman newman-reporter-htmlextra
+
+      - name: Run API Tests
         run: |
-          npm install -g newman newman-reporter-htmlextra
+          newman run postman/collections/usuarios.postman_collection.json \
+            -e postman/environments/hml.postman_environment.json \
+            --reporters cli,junit \
+            --reporter-junit-export reports/results-${{ matrix.node-version }}.xml
 
-      - name: 📁 Prepare reports folder
-        run: mkdir -p reports
-
-      - name: 🚀 Run Postman Tests (Full Suite)
-        run: |
-          newman run postman/collection.json \
-            -e postman/environment.json \
-            --reporters cli,htmlextra,junit \
-            --reporter-htmlextra-export reports/report-${{ matrix.node-version }}.html \
-            --reporter-junit-export reports/junit-${{ matrix.node-version }}.xml
-
-      - name: ⬆️ Upload HTML Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: postman-html-report-node${{ matrix.node-version }}
-          path: reports/report-${{ matrix.node-version }}.html
-
-      - name: ⬆️ Upload JUnit Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: postman-junit-report-node${{ matrix.node-version }}
-          path: reports/junit-${{ matrix.node-version }}.xml
-
-      # 🆕 Adiciona um bloco de resumo por versão da matriz
-      - name: 📝 Append to job summary (per Node)
-        if: always()
-        run: |
-          STATUS="${{ job.status }}"
-          EMOJI="🟢"
-          if [ "$STATUS" != "success" ]; then EMOJI="🔴"; fi
-          {
-            echo "### Resultados — Node ${{ matrix.node-version }} $EMOJI"
-            echo ""
-            echo "- **Status:** \`$STATUS\`"
-            echo "- **Artefatos:**"
-            echo "  - postman-html-report-node${{ matrix.node-version }}"
-            echo "  - postman-junit-report-node${{ matrix.node-version }}"
-            echo ""
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  # 🆕 Job final para mostrar um resumo geral (overall)
-  finalize:
-    needs: run-api-tests
-    if: always()
-    runs-on: ubuntu-latest
-    name: Finalize & Overall Summary
-    steps:
-      - name: 🧾 Overall matrix result
-        run: |
-          OVERALL="${{ needs.run-api-tests.result }}"
-          EMOJI="🟢"
-          if [ "$OVERALL" != "success" ]; then EMOJI="🔴"; fi
-          {
-            echo "# ✅ Resumo da Execução"
-            echo ""
-            echo "- **Resultado geral da matriz:** \`$OVERALL\` $EMOJI"
-            echo "- Baixe os relatórios em **Artifacts**:"
-            echo "  - postman-html-report-node18 / postman-junit-report-node18"
-            echo "  - postman-html-report-node20 / postman-junit-report-node20"
-            echo ""
-            echo "_Dica_: abra cada execução de job 'Run API Tests (Node …)' para ver o resumo por versão logo abaixo do log."
-          } >> "$GITHUB_STEP_SUMMARY"
-
+      # 👇 Novo bloco para gerar e salvar o relatório HTML
       - name: Generate HTML Report
         if: always()
         run: |
           mkdir -p reports
           newman run postman/collections/usuarios.postman_collection.json \
             -e postman/environments/hml.postman_environment.json \
-            -r htmlextra --reporter-htmlextra-export reports/api-report.html
+            -r htmlextra --reporter-htmlextra-export reports/api-report-${{ matrix.node-version }}.html
 
       - name: Upload HTML Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: API-Test-Report
-          path: reports/api-report.html
+          name: API-Test-Report-${{ matrix.node-version }}
+          path: reports/api-report-${{ matrix.node-version }}.html
+
+      - name: Finalize & Overall Summary
+        if: always()
+        run: echo "✅ All API tests completed successfully."

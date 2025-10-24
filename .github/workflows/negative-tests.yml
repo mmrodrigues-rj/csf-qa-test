@@ -1,50 +1,57 @@
-name: ❌ Negative API Tests - CSF-QA-TEST
+# .github/workflows/negative-api-tests.yml
+name: Negative API Tests - CSF-QA-TEST
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:      # executar manualmente.
-  schedule:
-    - cron: "0 3 * * *"   # diário às 03:00 UTC
+  push:
+    branches: [ main ]
 
 jobs:
   run-negative-api-tests:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node-version: [18, 20]
+
     steps:
-      - name: 🧩 Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🟢 Setup Node.js
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
 
-      - name: 📦 Install Newman + reporter
+      - name: Install Newman & reporter
         run: npm install -g newman newman-reporter-htmlextra
 
-      - name: 📁 Prepare reports folder
-        run: mkdir -p reports
-
-      - name: 🚦 Run ONLY Negative Tests
+      - name: Run Negative API Tests (JUnit)
         run: |
-          newman run postman/collection.json \
-            -e postman/environment.json \
+          mkdir -p reports
+          newman run postman/collections/usuarios.postman_collection.json \
+            -e postman/environments/hml.postman_environment.json \
             --folder "Negative Tests" \
-            --reporters cli,htmlextra,junit \
-            --reporter-htmlextra-export reports/negative-report.html \
-            --reporter-junit-export reports/negative-junit.xml
+            --reporters cli,junit \
+            --reporter-junit-export reports/neg-results-${{ matrix.node-version }}.xml
 
-      - name: ⬆️ Upload HTML Report
+      - name: Generate HTML Report (htmlextra)
+        if: always()
+        run: |
+          newman run postman/collections/usuarios.postman_collection.json \
+            -e postman/environments/hml.postman_environment.json \
+            --folder "Negative Tests" \
+            -r htmlextra \
+            --reporter-htmlextra-export reports/neg-api-report-${{ matrix.node-version }}.html
+
+      - name: Upload HTML Report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: negative-html-report
-          path: reports/negative-report.html
+          name: NEG-API-Test-Report-${{ matrix.node-version }}
+          path: reports/neg-api-report-${{ matrix.node-version }}.html
 
-      - name: ⬆️ Upload JUnit Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: negative-junit-report
-          path: reports/negative-junit.xml
+      - name: Finalize & Overall Summary
+        if: always()
+        run: echo "✅ Negative API tests finished (Node ${{ matrix.node-version }})"
