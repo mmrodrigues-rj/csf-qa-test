@@ -1,0 +1,236 @@
+{
+  "info": {
+    "name": "CSF-QA-TEST - API Tests (Postman + Newman)",
+    "_postman_id": "csf-qa-test-collection",
+    "description": "Desafio Banco Carrefour — Automação de Testes de API (Stack A). Inclui Login (JWT), CRUD de /users, validação de contrato e rate limit.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "users_list_schema",
+      "value": "{\"type\":\"object\",\"required\":[\"quantidade\",\"usuarios\"],\"properties\":{\"quantidade\":{\"type\":\"number\"},\"usuarios\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"nome\",\"email\",\"_id\"],\"properties\":{\"nome\":{\"type\":\"string\"},\"email\":{\"type\":\"string\"},\"_id\":{\"type\":\"string\"}}}}}}"
+    },
+    {
+      "key": "user_schema",
+      "value": "{\"type\":\"object\",\"required\":[\"message\"],\"properties\":{\"message\":{\"type\":\"string\"},\"_id\":{\"type\":\"string\"}}}"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (gera {{jwt}})",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+            },
+            "description": "Realiza login e salva token JWT no ambiente ({{jwt}})."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200/201\", () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "const json = pm.response.json();",
+                  "const token = json.authorization || json.token || json.jwt || json.accessToken;",
+                  "pm.test(\"Token presente na resposta\", () => pm.expect(token, 'token').to.exist);",
+                  "pm.environment.set('jwt', token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users (CRUD)",
+      "item": [
+        {
+          "name": "GET /users (lista)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Se não houver jwt, chama automaticamente o Login",
+                  "if (!pm.environment.get('jwt')) {",
+                  "  postman.setNextRequest('Auth / Login (gera {{jwt}})');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"< 1200ms\", () => pm.expect(pm.response.responseTime).to.be.below(1200));",
+                  "pm.test(\"JSON\", () => pm.response.to.be.json);",
+                  "pm.test(\"Content-Type\", () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "const schema = JSON.parse(pm.collectionVariables.get('users_list_schema'));",
+                  "pm.test('Contrato lista de usuários OK', () => tv4.validate(pm.response.json(), schema) || pm.expect(tv4.error).to.be.null);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /users (criar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Marcelo QA {{$timestamp}}\",\n  \"email\": \"marcelo.qa.{{$timestamp}}@exemplo.com\",\n  \"password\": \"123456\",\n  \"administrador\": \"true\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200/201\", () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('createdUserId', json._id || json.id || json._id_usuario);",
+                  "const schema = JSON.parse(pm.collectionVariables.get('user_schema'));",
+                  "pm.test('Contrato criação OK', () => tv4.validate(json, schema) || pm.expect(tv4.error).to.be.null);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /users/:id (buscar por id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/{{createdUserId}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "{{createdUserId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Schema mínimo\", () => {",
+                  "  const u = pm.response.json();",
+                  "  pm.expect(u).to.be.an('object');",
+                  "  pm.expect(u.nome).to.be.a('string');",
+                  "  pm.expect(u.email).to.be.a('string');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /users/:id (atualizar)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/{{createdUserId}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "{{createdUserId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Marcelo QA Updated {{ $timestamp }}\",\n  \"email\": \"marcelo.qa.updated.{{$timestamp}}@exemplo.com\",\n  \"password\": \"123456\",\n  \"administrador\": \"true\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Mensagem de sucesso presente\", () => pm.expect(pm.response.json().message || pm.response.json().mensagem).to.be.ok);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /users/:id (excluir)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/{{createdUserId}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "{{createdUserId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200/204\", () => pm.expect(pm.response.code).to.be.oneOf([200,204]));",
+                  "pm.environment.unset('createdUserId');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rate Limit",
+      "item": [
+        {
+          "name": "GET /users - 101 requisições (espera 429 em alguma)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const TOTAL = 101;",
+                  "let completed = 0;",
+                  "let got429 = false;",
+                  "",
