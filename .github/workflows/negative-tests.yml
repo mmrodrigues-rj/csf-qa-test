@@ -1,0 +1,46 @@
+name: ❌ Negative API Tests - CSF-QA-TEST
+
+on:
+  workflow_dispatch:      # executar manualmente
+  schedule:
+    - cron: "0 3 * * *"   # diário às 03:00 UTC (ajuste se quiser)
+
+jobs:
+  run-negative-api-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🧩 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 📦 Install Newman + reporter
+        run: npm install -g newman newman-reporter-htmlextra
+
+      - name: 📁 Prepare reports folder
+        run: mkdir -p reports
+
+      - name: 🚦 Run ONLY Negative Tests
+        run: |
+          newman run postman/collection.json \
+            -e postman/environment.json \
+            --folder "Negative Tests" \
+            --reporters cli,htmlextra,junit \
+            --reporter-htmlextra-export reports/negative-report.html \
+            --reporter-junit-export reports/negative-junit.xml
+
+      - name: ⬆️ Upload HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: negative-html-report
+          path: reports/negative-report.html
+
+      - name: ⬆️ Upload JUnit Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: negative-junit-report
+          path: reports/negative-junit.xml
