@@ -1,0 +1,39 @@
+{
+  "id": "csf-qa-test-local-env",
+  "name": "CSF-QA-TEST - Local",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "https://serverest.dev",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "admin_email",
+      "value": "admin.qa.1761289133@exemplo.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "admin_password",
+      "value": "123456",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "jwt",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "createdUserId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment",
+  "_postman_exported_at": "2025-10-24T23:59:00.000Z",
+  "_postman_exported_using": "Postman/11.16.0"
+}

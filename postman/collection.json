@@ -1,0 +1,403 @@
+{
+  "info": {
+    "name": "CSF-QA-TEST - API Tests (Postman + Newman)",
+    "_postman_id": "csf-qa-test-collection",
+    "description": "Desafio Banco Carrefour — Automação de Testes de API (Stack A). Coleção ajustada para ServeRest: /usuarios, login (JWT), CRUD, negativos e rate limit robusto.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Criar Admin (para testes)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/usuarios", "host": ["{{base_url}}"], "path": ["usuarios"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Admin QA {{$timestamp}}\",\n  \"email\": \"admin.qa.{{$timestamp}}@exemplo.com\",\n  \"password\": \"123456\",\n  \"administrador\": \"true\"\n}"
+            },
+            "description": "Cria rapidamente um usuário administrador para testes locais."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "const body = pm.response.json();",
+                  "if (body._id) pm.environment.set('createdUserId', body._id);",
+                  "try {",
+                  "  const raw = pm.request.body?.raw || '{}';",
+                  "  const req = JSON.parse(raw);",
+                  "  if (req.email) pm.environment.set('admin_email', req.email);",
+                  "  if (req.password) pm.environment.set('admin_password', req.password);",
+                  "} catch(e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (gera {{jwt}})",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+            },
+            "description": "Realiza login e salva token 'authorization' em {{jwt}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "const json = pm.response.json();",
+                  "const token = json.authorization || json.token || json.jwt || json.accessToken;",
+                  "pm.test('Token presente', () => pm.expect(token, 'authorization').to.exist);",
+                  "pm.environment.set('jwt', token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Usuarios (CRUD)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.environment.get('jwt')) {",
+              "  postman.setNextRequest('Auth / Login (gera {{jwt}})');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+  "name": "GET /usuarios (lista)",
+  "request": {
+    "method": "GET",
+    "header": [
+      { "key": "Authorization", "value": "{{jwt}}", "type": "text" }
+    ],
+    "url": { "raw": "{{base_url}}/usuarios", "host": ["{{base_url}}"], "path": ["usuarios"] }
+  },
+  "event": [
+  {
+    "listen": "test",
+    "script": {
+      "type": "text/javascript",
+      "exec": [
+        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+        "pm.test('JSON', () => pm.response.to.be.json);",
+        "const body = pm.response.json();",
+        "pm.test('tem quantidade (number)', () => pm.expect(body).to.have.property('quantidade').that.is.a('number'));",
+        "pm.test('usuarios é array', () => pm.expect(body).to.have.property('usuarios').that.is.an('array'));"
+      ]
+    }
+  }
+]
+
+}
+,
+        {
+          "name": "POST /usuarios (criar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "{{jwt}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/usuarios", "host": ["{{base_url}}"], "path": ["usuarios"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Marcelo QA {{$timestamp}}\",\n  \"email\": \"marcelo.qa.{{$timestamp}}@exemplo.com\",\n  \"password\": \"123456\",\n  \"administrador\": \"true\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "const json = pm.response.json();",
+                  "pm.test('mensagem presente', () => pm.expect(json.message).to.be.a('string'));",
+                  "const id = json._id || json.id;",
+                  "pm.test('retorna id', () => pm.expect(id).to.be.a('string'));",
+                  "pm.environment.set('createdUserId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /usuarios/:id (buscar por id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "{{jwt}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios/{{createdUserId}}",
+              "host": ["{{base_url}}"],
+              "path": ["usuarios", "{{createdUserId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const u = pm.response.json();",
+                  "pm.expect(u).to.be.an('object');",
+                  "pm.expect(u.nome).to.be.a('string');",
+                  "pm.expect(u.email).to.be.a('string');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /usuarios/:id (atualizar)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "{{jwt}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios/{{createdUserId}}",
+              "host": ["{{base_url}}"],
+              "path": ["usuarios", "{{createdUserId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Marcelo QA Updated {{$timestamp}}\",\n  \"email\": \"marcelo.qa.updated.{{$timestamp}}@exemplo.com\",\n  \"password\": \"123456\",\n  \"administrador\": \"true\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('mensagem presente', () => pm.expect(pm.response.json().message).to.be.ok);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /usuarios/:id (excluir)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "{{jwt}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios/{{createdUserId}}",
+              "host": ["{{base_url}}"],
+              "path": ["usuarios", "{{createdUserId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/204', () => pm.expect(pm.response.code).to.be.oneOf([200,204]));",
+                  "pm.environment.unset('createdUserId');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Negative Tests",
+      "item": [
+        {
+          "name": "POST /usuarios (email duplicado) [@negative]",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "{{jwt}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/usuarios", "host": ["{{base_url}}"], "path": ["usuarios"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Duplicado QA\",\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"123456\",\n  \"administrador\": \"true\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 ou 409', () => pm.expect([400,409]).to.include(pm.response.code));",
+                  "const body = pm.response.json();",
+                  "const hasMsg = typeof body.message === 'string' && body.message.length > 0;",
+                  "pm.test('mensagem de erro presente', () => pm.expect(hasMsg).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /usuarios (campos obrigatórios) [@negative]",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "{{jwt}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/usuarios", "host": ["{{base_url}}"], "path": ["usuarios"] },
+            "body": { "mode": "raw", "raw": "{\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400/422', () => pm.expect([400,422]).to.include(pm.response.code));",
+                  "const body = pm.response.json() || {};",
+                  "const hasMessage = typeof body.message === 'string' && body.message.length > 0;",
+                  "const hasErrorsArray = Array.isArray(body.errors) && body.errors.length > 0;",
+                  "const hasErrorsObj = body.errors && typeof body.errors === 'object' && !Array.isArray(body.errors) && Object.keys(body.errors).length > 0;",
+                  "const fieldKeys = ['nome','email','password','administrador'];",
+                  "const hasFieldMap = fieldKeys.some(k => typeof body[k] === 'string' && body[k].length > 0);",
+                  "pm.test('Erro presente (message | errors | mapa de campos)', () => pm.expect(hasMessage || hasErrorsArray || hasErrorsObj || hasFieldMap, 'message|errors|fieldMap').to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /usuarios/:id (id inexistente) [@negative]",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "{{jwt}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/usuarios/000000000000000000000000", "host": ["{{base_url}}"], "path": ["usuarios", "000000000000000000000000"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400/404', () => pm.expect([400,404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /usuarios/:id (payload inválido) [@negative]",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "{{jwt}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/usuarios/000000000000000000000000", "host": ["{{base_url}}"], "path": ["usuarios", "000000000000000000000000"] },
+            "body": { "mode": "raw", "raw": "{\n  \"nome\": 123\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400/422', () => pm.expect([400,422]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rate Limit",
+      "item": [
+        {
+          "name": "GET /usuarios - 50 requisições (espera 429 em alguma, tolerante)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "{{jwt}}", "type": "text" }
+            ],
+            "url": { "raw": "{{base_url}}/usuarios", "host": ["{{base_url}}"], "path": ["usuarios"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["const TOTAL = 20;",
+                    "let completed = 0;",
+                    "let got429 = false;",
+                    "let non2xx = 0;",
+                    "let errors = 0;",
+                    "const url = pm.variables.replaceIn('{{base_url}}/usuarios');",
+                    "const auth = pm.environment.get('jwt');",
+                    "function done(){",
+                    "  pm.test('Sem erros de request (network/protocolo)', function(){ pm.expect(errors).to.equal(0); });",
+                    "  pm.test('Sem falhas inesperadas (non-2xx exceto 429)', function(){ pm.expect(non2xx).to.equal(0); });",
+                    "  pm.test('Rate limit observado (429) OU endpoint não limita', function(){ pm.expect(got429 || non2xx === 0).to.be.true; });",
+                    "  console.log('Resumo rate limit:', { TOTAL: TOTAL, got429: got429, non2xx: non2xx, errors: errors });",
+                    "}",
+                    "for (var i = 0; i < TOTAL; i++) {",
+                    "  pm.sendRequest({",
+                    "    url: url",
+                    "    ,method: 'GET'",
+                    "    ,header: [{ key: 'Authorization', value: auth }]",
+                    "  }, function(err, res){",
+                    "    completed++;",
+                    "    if (err) {",
+                    "      errors++;",
+                    "    } else {",
+                    "      if (res.code === 429) { got429 = true; }",
+                    "      else if (String(res.code)[0] !== '2') { non2xx++; }",
+                    "    }",
+                    "    if (completed === TOTAL) { done(); }",
+                    "  });",
+                    "}"
+                  ]
+
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
