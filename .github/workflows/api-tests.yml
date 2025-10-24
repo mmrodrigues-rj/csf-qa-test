@@ -2,24 +2,27 @@ name: 🔍 API Tests - CSF-QA-TEST
 
 on:
   push:
-    branches: [ main, master , executando]
+    branches: [ main, master, executando ]
   pull_request:
-    branches: [ main, master, executando]
-  workflow_dispatch: # Permite execução manual pelo GitHub UI
+    branches: [ main, master, executando ]
+  workflow_dispatch: # permite execução manual
 
 jobs:
   run-api-tests:
     runs-on: ubuntu-latest
-    name: Run Postman + Newman Tests
+    strategy:
+      matrix:
+        node-version: [18, 20]   # 👈 executa em Node.js 18 e 20
+    name: Run API Tests (Node ${{ matrix.node-version }})
 
     steps:
       - name: 🧩 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🟢 Setup Node.js
+      - name: 🟢 Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
 
       - name: 📦 Install dependencies
         run: |
@@ -33,17 +36,17 @@ jobs:
           newman run postman/collection.json \
             -e postman/environment.json \
             --reporters cli,htmlextra,junit \
-            --reporter-htmlextra-export reports/report.html \
-            --reporter-junit-export reports/junit.xml
+            --reporter-htmlextra-export reports/report-${{ matrix.node-version }}.html \
+            --reporter-junit-export reports/junit-${{ matrix.node-version }}.xml
 
       - name: 📄 Upload HTML Report
         uses: actions/upload-artifact@v4
         with:
-          name: postman-html-report
-          path: reports/report.html
+          name: postman-html-report-node${{ matrix.node-version }}
+          path: reports/report-${{ matrix.node-version }}.html
 
       - name: 📄 Upload JUnit Report
         uses: actions/upload-artifact@v4
         with:
-          name: postman-junit-report
-          path: reports/junit.xml
+          name: postman-junit-report-node${{ matrix.node-version }}
+          path: reports/junit-${{ matrix.node-version }}.xml
