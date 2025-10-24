@@ -5,7 +5,7 @@ on:
     branches: [ main, master, executando ]
   pull_request:
     branches: [ main, master, executando ]
-  workflow_dispatch:      # executar manualmente
+  workflow_dispatch:      # executar manualmente.
   schedule:
     - cron: "0 3 * * *"   # diário às 03:00 UTC
 

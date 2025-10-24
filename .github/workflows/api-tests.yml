@@ -5,7 +5,7 @@ on:
     branches: [ main, master, executando ]
   pull_request:
     branches: [ main, master, executando ]
-  workflow_dispatch: # permite execução manual
+  workflow_dispatch: # permite execução manual.
 
 jobs:
   run-api-tests:
