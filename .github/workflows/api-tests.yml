@@ -11,8 +11,9 @@ jobs:
   run-api-tests:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false          # 🆕 não interrompe a matriz ao primeiro erro
       matrix:
-        node-version: [18, 20]   # 👈 executa em Node.js 18 e 20
+        node-version: [18, 20]  # executa em Node 18 e 20
     name: Run API Tests (Node ${{ matrix.node-version }})
 
     steps:
@@ -39,14 +40,54 @@ jobs:
             --reporter-htmlextra-export reports/report-${{ matrix.node-version }}.html \
             --reporter-junit-export reports/junit-${{ matrix.node-version }}.xml
 
-      - name: 📄 Upload HTML Report
+      - name: ⬆️ Upload HTML Report
         uses: actions/upload-artifact@v4
         with:
           name: postman-html-report-node${{ matrix.node-version }}
           path: reports/report-${{ matrix.node-version }}.html
 
-      - name: 📄 Upload JUnit Report
+      - name: ⬆️ Upload JUnit Report
         uses: actions/upload-artifact@v4
         with:
           name: postman-junit-report-node${{ matrix.node-version }}
           path: reports/junit-${{ matrix.node-version }}.xml
+
+      # 🆕 Adiciona um bloco de resumo por versão da matriz
+      - name: 📝 Append to job summary (per Node)
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          EMOJI="🟢"
+          if [ "$STATUS" != "success" ]; then EMOJI="🔴"; fi
+          {
+            echo "### Resultados — Node ${{ matrix.node-version }} $EMOJI"
+            echo ""
+            echo "- **Status:** \`$STATUS\`"
+            echo "- **Artefatos:**"
+            echo "  - postman-html-report-node${{ matrix.node-version }}"
+            echo "  - postman-junit-report-node${{ matrix.node-version }}"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # 🆕 Job final para mostrar um resumo geral (overall)
+  finalize:
+    needs: run-api-tests
+    if: always()
+    runs-on: ubuntu-latest
+    name: Finalize & Overall Summary
+    steps:
+      - name: 🧾 Overall matrix result
+        run: |
+          OVERALL="${{ needs.run-api-tests.result }}"
+          EMOJI="🟢"
+          if [ "$OVERALL" != "success" ]; then EMOJI="🔴"; fi
+          {
+            echo "# ✅ Resumo da Execução"
+            echo ""
+            echo "- **Resultado geral da matriz:** \`$OVERALL\` $EMOJI"
+            echo "- Baixe os relatórios em **Artifacts**:"
+            echo "  - postman-html-report-node18 / postman-junit-report-node18"
+            echo "  - postman-html-report-node20 / postman-junit-report-node20"
+            echo ""
+            echo "_Dica_: abra cada execução de job 'Run API Tests (Node …)' para ver o resumo por versão logo abaixo do log."
+          } >> "$GITHUB_STEP_SUMMARY"
