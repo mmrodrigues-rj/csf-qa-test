@@ -2,9 +2,9 @@ name: ❌ Negative API Tests - CSF-QA-TEST
 
 on:
   push:
-    branches: [ main, master, executando ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master, executando ]
+    branches: [ main ]
   workflow_dispatch:      # executar manualmente.
   schedule:
     - cron: "0 3 * * *"   # diário às 03:00 UTC
