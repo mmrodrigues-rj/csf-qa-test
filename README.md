@@ -1,115 +1,151 @@
-# 🧪 CSF-QA-TEST — API Test Automation (Banco Carrefour Challenge)
+# CSF-QA-TEST — API Automation (Postman + Newman)
 
-![API Tests](https://github.com/mmrodrigues-rj/CSF-QA-TEST/actions/workflows/api-tests.yml/badge.svg)
-![Negative API Tests](https://github.com/mmrodrigues-rj/CSF-QA-TEST/actions/workflows/negative-tests.yml/badge.svg)
-
-Automação de testes de API desenvolvida como parte do **Desafio Banco Carrefour – QA Automation**.  
-O projeto cobre autenticação JWT, operações CRUD em `/users`, validação de contratos, limites de requisição (Rate Limit) e cenários negativos, utilizando **Postman**, **Newman** e **GitHub Actions**.
+Automated API testing project based on **ServeRest** (https://serverest.dev) developed as part of the **Banco Carrefour QA Challenge**.
 
 ---
 
-## 🧰 Stack Técnica
-| Componente | Descrição |
-|-------------|------------|
-| **Postman** | Criação e organização dos testes de API |
-| **Newman** | Execução automatizada da coleção no terminal e CI |
-| **Node.js 20+** | Ambiente de execução |
-| **GitHub Actions** | Pipeline de integração contínua (CI) |
-| **newman-reporter-htmlextra** | Geração de relatórios HTML detalhados |
+## 📊 Overview
+This project validates CRUD and authentication behavior in the ServeRest API using Postman and Newman. It includes:
+
+- ✅ Auth flow (user creation and JWT login)
+- ✅ CRUD operations on `/usuarios`
+- ✅ Negative scenarios (duplicate email, missing required fields, invalid ID, invalid payload)
+- ✅ Rate limit validation with tolerance for 429 responses
 
 ---
 
-## 🧩 Estrutura do Projeto
-
-```
+## 🔧 Folder Structure
+```bash
 CSF-QA-TEST/
-│
-├── .github/
-│   └── workflows/
-│       ├── api-tests.yml           # Executa toda a suíte de testes
-│       └── negative-tests.yml      # Executa apenas os cenários negativos
-│
+├── .github/workflows/
+│   ├── api-tests.yml             # Main Newman workflow for all tests
+│   └── negative-tests.yml        # Workflow for negative test suite only
 ├── postman/
-│   ├── collection.json             # Coleção completa de testes (CRUD, negativos, rate limit)
-│   ├── environment.json            # Variáveis de ambiente (base_url, jwt, credenciais)
-│   └── schemas/                    # (Opcional) JSON Schemas para validação de contrato
-│
-├── reports/                        # Relatórios gerados automaticamente (HTML, JUnit)
-│
-├── README.md                       # Este arquivo 😄
-└── Banco Carrefour - Desafio de Automação de Testes de API.pdf
+│   ├── collection.json           # Test definitions
+│   └── environment.json          # Local environment variables
+├── reports/                      # Newman reports (HTML/JSON)
+├── README.md                     # This documentation
 ```
 
 ---
 
-## ⚙️ Execução Local
+## 🖥️ Requirements
+- [Postman Desktop](https://www.postman.com/downloads/)
+- [Node.js](https://nodejs.org/) v18+
+- [Newman](https://www.npmjs.com/package/newman)
 
-### 1️⃣ Instale as dependências
+Install Newman globally:
 ```bash
 npm install -g newman newman-reporter-htmlextra
 ```
 
-### 2️⃣ Execute a suíte completa
+---
+
+## 🔑 Environment Variables
+Located in `postman/environment.json`:
+
+| Variable | Description | Example |
+|-----------|--------------|----------|
+| `base_url` | Base URL of ServeRest | `https://serverest.dev` |
+| `admin_email` | Admin login email | `admin.qa.1761289133@exemplo.com` |
+| `admin_password` | Password for admin | `123456` |
+| `jwt` | Token (auto-filled during tests) | *(generated)* |
+| `createdUserId` | User ID created in tests | *(auto)* |
+
+---
+
+## 🧮 Running Tests (Postman)
+1. Import both files from `/postman` folder into Postman.
+2. Select **Environment → CSF-QA-TEST - Local**.
+3. Run manually or via **Collection Runner**.
+
+To run all folders (Auth, CRUD, Negatives, Rate Limit):
 ```bash
-newman run postman/collection.json \
-  -e postman/environment.json \
-  --reporters cli,htmlextra,junit \
-  --reporter-htmlextra-export reports/report.html \
-  --reporter-junit-export reports/junit.xml
+Ctrl + R  # or Runner → Run Collection
 ```
 
-### 3️⃣ Execute apenas os testes negativos
+---
+
+## 🧰 Running via Newman
+Run the full suite directly from CLI:
+
 ```bash
-newman run postman/collection.json \
-  -e postman/environment.json \
-  --folder "Negative Tests" \
-  --reporters cli,htmlextra,junit \
-  --reporter-htmlextra-export reports/negative-report.html \
-  --reporter-junit-export reports/negative-junit.xml
+newman run postman/collection.json   -e postman/environment.json   -r cli,htmlextra   --reporter-htmlextra-export reports/index.html
+```
+
+This will generate:
+```
+reports/index.html
+```
+which you can open in your browser for a detailed test summary.
+
+---
+
+## 📁 Reports
+After each run, Newman saves reports inside the `/reports` folder.
+
+| File | Description |
+|------|--------------|
+| `index.html` | Visual HTML report generated by `htmlextra` |
+| `newman-report.json` | Raw JSON report (optional, useful for CI/CD pipelines) |
+
+Open the file `reports/index.html` in your browser to view detailed test results, charts, and metrics.
+
+Example of full report generation:
+```bash
+newman run postman/collection.json   -e postman/environment.json   -r cli,json,htmlextra   --reporter-json-export reports/newman-report.json   --reporter-htmlextra-export reports/index.html
 ```
 
 ---
 
-## 🚀 Execução Automática (GitHub Actions)
+## 📘 Test Structure
+### **1. Auth**
+- `Criar Admin`: registers admin user dynamically.
+- `Login`: authenticates and stores JWT in `{{jwt}}`.
 
-O pipeline é disparado automaticamente a cada **push** ou **pull request** no branch `main`.  
-Ele realiza:
-1. Instalação do Node.js e dependências  
-2. Execução dos testes via **Newman**  
-3. Geração dos relatórios HTML e JUnit  
-4. Upload dos relatórios como artefatos no GitHub Actions  
+### **2. Usuarios (CRUD)**
+- List, create, fetch, update, delete user endpoints.
 
-Você pode acompanhar os resultados em:  
-📍 **GitHub → Actions → [API Tests - CSF-QA-TEST](https://github.com/mmrodrigues-rj/CSF-QA-TEST/actions)**
+### **3. Negative Tests**
+- Duplicate email validation.
+- Required fields validation.
+- Invalid ID and payload handling.
 
----
-
-## 📊 Relatórios
-
-Após a execução:
-- **HTML Report:** `reports/report.html`  
-- **JUnit Report:** `reports/junit.xml`
-
-Nos testes negativos:
-- **HTML Report:** `reports/negative-report.html`  
-- **JUnit Report:** `reports/negative-junit.xml`
+### **4. Rate Limit**
+- Executes 30 requests to `/usuarios` to detect rate limiting (status `429` tolerated).
 
 ---
 
-## 🧠 Casos de Teste Principais
+## 🔄 CI/CD Integration
+If you push this project to GitHub, the included workflows in `.github/workflows/` will automatically run all Postman tests through Newman.
 
-| Categoria | Descrição |
-|------------|------------|
-| **Auth** | Login e geração de token JWT |
-| **Users (CRUD)** | Criação, listagem, busca, atualização e exclusão de usuários |
-| **Rate Limit** | Execução de múltiplas requisições para validar limite da API |
-| **Negative Tests** | E-mail duplicado, campos obrigatórios, ID inexistente, payload inválido |
+| Workflow | Description |
+|-----------|-------------|
+| `api-tests.yml` | Executes the full collection (Auth, CRUD, Rate Limit) on every push or pull request. |
+| `negative-tests.yml` | Runs only the *Negative Tests* folder to validate error handling and input validation. Useful for regression control and nightly jobs. |
+
+Both workflows:
+- Install Node.js and Newman.
+- Run the tests using the environment file (`postman/environment.json`).
+- Generate an HTML report under `/reports`.
+- Upload the report as a GitHub Action artifact for download.
 
 ---
 
-## ✨ Autor
+## 🔐 Notes
+- Make sure the admin user exists before first run.
+- Login test dynamically updates `{{jwt}}` for dependent requests.
+- The Rate Limit test may take 20–30 seconds.
 
+---
+
+## 👤 Author
 **Marcelo Rodrigues**  
-👨‍💻 QA Automation Engineer  
-📫 [LinkedIn](https://www.linkedin.com/in/marcelo-rodrigues)  
-📦 Projeto: [CSF-QA-TEST](https://github.com/mmrodrigues-rj/CSF-QA-TEST)
+GitHub: [@mmrodrigues-rj](https://github.com/mmrodrigues-rj)
+
+---
+
+## 🔍 Next Steps
+- [ ] Add schema validation (Ajv) for all responses.
+- [ ] Integrate automatic report publishing in GitHub Pages.
+- [ ] Add test data generation from external JSON fixtures.
