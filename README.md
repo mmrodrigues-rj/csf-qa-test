@@ -1,4 +1,8 @@
 # CSF-QA-TEST — API Automation (Postman + Newman)
+<!-- Status: CI -->
+[![API Tests](https://github.com/mmrodrigues-rj/csf-qa-test/actions/workflows/api-tests.yml/badge.svg?branch=main)](https://github.com/mmrodrigues-rj/csf-qa-test/actions/workflows/api-tests.yml)
+[![Negative API Tests](https://github.com/mmrodrigues-rj/csf-qa-test/actions/workflows/negative-tests.yml/badge.svg?branch=main)](https://github.com/mmrodrigues-rj/csf-qa-test/actions/workflows/negative-tests.yml)
+
 
 Automated API testing project based on **ServeRest** (https://serverest.dev) developed as part of the **Banco Carrefour QA Challenge**.
 
