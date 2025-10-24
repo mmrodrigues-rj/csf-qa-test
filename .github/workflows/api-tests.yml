@@ -1,0 +1,49 @@
+name: 🔍 API Tests - CSF-QA-TEST
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # Permite execução manual pelo GitHub UI
+
+jobs:
+  run-api-tests:
+    runs-on: ubuntu-latest
+    name: Run Postman + Newman Tests
+
+    steps:
+      - name: 🧩 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 📦 Install dependencies
+        run: |
+          npm install -g newman newman-reporter-htmlextra
+
+      - name: 📁 Prepare reports folder
+        run: mkdir -p reports
+
+      - name: 🚀 Run Postman Tests (Full Suite)
+        run: |
+          newman run postman/collection.json \
+            -e postman/environment.json \
+            --reporters cli,htmlextra,junit \
+            --reporter-htmlextra-export reports/report.html \
+            --reporter-junit-export reports/junit.xml
+
+      - name: 📄 Upload HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-html-report
+          path: reports/report.html
+
+      - name: 📄 Upload JUnit Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-junit-report
+          path: reports/junit.xml

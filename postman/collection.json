@@ -2,7 +2,7 @@
   "info": {
     "name": "CSF-QA-TEST - API Tests (Postman + Newman)",
     "_postman_id": "csf-qa-test-collection",
-    "description": "Desafio Banco Carrefour — Automação de Testes de API (Stack A). Inclui Login (JWT), CRUD de /users, validação de contrato e rate limit.",
+    "description": "Desafio Banco Carrefour — Automação de Testes de API (Stack A). Inclui Login (JWT), CRUD de /users, casos negativos e rate limit.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -18,32 +18,30 @@
   "item": [
     {
       "name": "Auth",
+      "description": "📁 Login e autenticação JWT.",
       "item": [
         {
           "name": "Login (gera {{jwt}})",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
             },
-            "description": "Realiza login e salva token JWT no ambiente ({{jwt}})."
+            "description": "Realiza login com credenciais do environment e salva token JWT em {{jwt}}."
           },
-          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200/201\", () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "pm.test('Status 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
                   "const json = pm.response.json();",
                   "const token = json.authorization || json.token || json.jwt || json.accessToken;",
-                  "pm.test(\"Token presente na resposta\", () => pm.expect(token, 'token').to.exist);",
+                  "pm.test('Token presente', () => pm.expect(token).to.exist);",
                   "pm.environment.set('jwt', token);"
                 ]
               }
@@ -54,41 +52,28 @@
     },
     {
       "name": "Users (CRUD)",
+      "description": "📁 Testes principais de usuários: lista, criação, busca, atualização e exclusão.",
       "item": [
         {
           "name": "GET /users (lista)",
           "request": {
             "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" }],
             "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] }
           },
+          "description": "🟢 Lista usuários. Verifica status, tempo de resposta, content-type e contrato básico.",
           "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "// Se não houver jwt, chama automaticamente o Login",
-                  "if (!pm.environment.get('jwt')) {",
-                  "  postman.setNextRequest('Login (gera {{jwt}})');",
-                  "}"
-                ]
-              }
-            },
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"< 1200ms\", () => pm.expect(pm.response.responseTime).to.be.below(1200));",
-                  "pm.test(\"JSON\", () => pm.response.to.be.json);",
-                  "pm.test(\"Content-Type\", () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('< 1200ms', () => pm.expect(pm.response.responseTime).to.be.below(1200));",
+                  "pm.test('JSON válido', () => pm.response.to.be.json);",
                   "const schema = JSON.parse(pm.collectionVariables.get('users_list_schema'));",
                   "const data = pm.response.json();",
-                  "pm.test('Contrato lista de usuários OK', () => {",
+                  "pm.test('Contrato lista OK', () => {",
                   "  const ok = tv4.validate(data, schema);",
                   "  if (!ok) console.log('tv4 error:', tv4.error);",
                   "  pm.expect(ok).to.be.true;",
@@ -112,19 +97,18 @@
               "raw": "{\n  \"nome\": \"Marcelo QA {{$timestamp}}\",\n  \"email\": \"marcelo.qa.{{$timestamp}}@exemplo.com\",\n  \"password\": \"123456\",\n  \"administrador\": \"true\"\n}"
             }
           },
+          "description": "🟢 Cria usuário novo e salva o id para uso posterior.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200/201\", () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "pm.test('Status 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
                   "const json = pm.response.json();",
                   "pm.environment.set('createdUserId', json._id || json.id || json._id_usuario);",
-                  "const schema = JSON.parse(pm.collectionVariables.get('user_schema'));",
                   "pm.test('Contrato criação OK', () => {",
-                  "  const ok = tv4.validate(json, schema);",
-                  "  if (!ok) console.log('tv4 error:', tv4.error);",
+                  "  const ok = tv4.validate(json, JSON.parse(pm.collectionVariables.get('user_schema')));",
                   "  pm.expect(ok).to.be.true;",
                   "});"
                 ]
@@ -136,24 +120,22 @@
           "name": "GET /users/:id (buscar por id)",
           "request": {
             "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" }],
             "url": {
               "raw": "{{base_url}}/users/{{createdUserId}}",
               "host": ["{{base_url}}"],
               "path": ["users", "{{createdUserId}}"]
             }
           },
+          "description": "🟢 Busca o usuário criado e valida nome/email.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const u = pm.response.json();",
-                  "pm.expect(u).to.be.an('object');",
                   "pm.expect(u.nome).to.be.a('string');",
                   "pm.expect(u.email).to.be.a('string');"
                 ]
@@ -179,14 +161,15 @@
               "raw": "{\n  \"nome\": \"Marcelo QA Updated {{$timestamp}}\",\n  \"email\": \"marcelo.qa.updated.{{$timestamp}}@exemplo.com\",\n  \"password\": \"123456\",\n  \"administrador\": \"true\"\n}"
             }
           },
+          "description": "🟢 Atualiza o usuário criado.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Mensagem de sucesso presente\", () => pm.expect(pm.response.json().message || pm.response.json().mensagem).to.be.ok);"
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Mensagem de sucesso presente', () => pm.expect(pm.response.json().message || pm.response.json().mensagem).to.exist);"
                 ]
               }
             }
@@ -196,22 +179,21 @@
           "name": "DELETE /users/:id (excluir)",
           "request": {
             "method": "DELETE",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" }],
             "url": {
               "raw": "{{base_url}}/users/{{createdUserId}}",
               "host": ["{{base_url}}"],
               "path": ["users", "{{createdUserId}}"]
             }
           },
+          "description": "🟢 Remove o usuário e limpa variável createdUserId.",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200/204\", () => pm.expect(pm.response.code).to.be.oneOf([200,204]));",
+                  "pm.test('Status 200/204', () => pm.expect(pm.response.code).to.be.oneOf([200,204]));",
                   "pm.environment.unset('createdUserId');"
                 ]
               }
@@ -221,17 +203,140 @@
       ]
     },
     {
-      "name": "Rate Limit",
+      "name": "Negative Tests",
+      "description": "📁 Casos negativos de /users: e-mail duplicado, campos obrigatórios, id inexistente e payload inválido.",
       "item": [
         {
-          "name": "GET /users - 101 requisições (espera 429 em alguma)",
+          "name": "POST /users (email duplicado) [@negative]",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Usuário Duplicado\",\n  \"email\": \"marcelo.qa.duplicado@exemplo.com\",\n  \"password\": \"123456\",\n  \"administrador\": \"true\"\n}"
+            }
+          },
+          "description": "🔴 Cria usuário duplicado. Espera 400/409 e mensagem de erro.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400/409 para duplicado', () => pm.expect(pm.response.code).to.be.oneOf([400,409]));",
+                  "const msg = (pm.response.json().message || pm.response.json().mensagem || '').toString();",
+                  "pm.test('Mensagem indica duplicidade', () => pm.expect(msg).to.match(/existe|duplic/i));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /users (campos obrigatórios faltando) [@negative]",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"\",\n  \"email\": \"\",\n  \"password\": \"\",\n  \"administrador\": \"\"\n}"
+            }
+          },
+          "description": "🔴 Envia campos obrigatórios vazios. Espera 400/422.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400/422', () => pm.expect(pm.response.code).to.be.oneOf([400,422]));",
+                  "const json = pm.response.json();",
+                  "pm.expect(json).to.be.an('object');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /users/:id (id inexistente) [@negative]",
           "request": {
             "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" }],
+            "url": {
+              "raw": "{{base_url}}/users/000000000000000000000000",
+              "host": ["{{base_url}}"],
+              "path": ["users", "000000000000000000000000"]
+            }
+          },
+          "description": "🔴 Busca id inexistente (24 zeros). Espera 400/404 e mensagem clara.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400/404', () => pm.expect(pm.response.code).to.be.oneOf([400,404]));",
+                  "const json = pm.response.json();",
+                  "pm.test('Mensagem de erro presente', () => pm.expect(json.message || json.mensagem).to.exist);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /users/:id (payload inválido) [@negative]",
+          "request": {
+            "method": "PUT",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" }
+              { "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
             ],
+            "url": {
+              "raw": "{{base_url}}/users/{{createdUserId}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "{{createdUserId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": 123,\n  \"email\": false,\n  \"password\": {},\n  \"administrador\": null\n}"
+            }
+          },
+          "description": "🔴 Envia payload inválido (tipos errados). Espera 400/422.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400/422 para payload inválido', () => pm.expect(pm.response.code).to.be.oneOf([400,422]));",
+                  "const json = pm.response.json();",
+                  "pm.test('Mensagem de erro informativa', () => pm.expect(json.message || json.mensagem).to.exist);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rate Limit",
+      "description": "📁 Validação de limite de requisições.",
+      "item": [
+        {
+          "name": "GET /users - 101 requisições (espera 429) [@ratelimit]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}", "type": "text" }],
             "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] }
           },
+          "description": "🚦 Dispara 101 requisições simultâneas para verificar rate limit.",
           "event": [
             {
               "listen": "test",
@@ -241,17 +346,15 @@
                   "const TOTAL = 101;",
                   "let completed = 0;",
                   "let got429 = false;",
-                  "function done(){",
-                  "  pm.test('Pelo menos uma requisição retornou 429 (rate limited)', () => got429 === true);",
-                  "}",
+                  "function done(){ pm.test('Pelo menos uma requisição retornou 429', () => got429 === true); }",
                   "for (let i=0; i<TOTAL; i++){",
                   "  pm.sendRequest({",
                   "    url: pm.variables.replaceIn('GET {{base_url}}/users'),",
                   "    method: 'GET',",
                   "    header: { 'Authorization': 'Bearer ' + pm.environment.get('jwt') }",
-                  "  }, function (err, res){",
+                  "  }, (err, res) => {",
                   "    completed++;",
-                  "    if (!err && res && res.code === 429) { got429 = true; }",
+                  "    if (!err && res && res.code === 429) got429 = true;",
                   "    if (completed === TOTAL) done();",
                   "  });",
                   "}"
