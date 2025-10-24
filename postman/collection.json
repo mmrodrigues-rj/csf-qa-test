@@ -92,30 +92,32 @@
       ],
       "item": [
         {
-          "name": "GET /usuarios (lista)",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "{{jwt}}", "type": "text" }
-            ],
-            "url": { "raw": "{{base_url}}/usuarios", "host": ["{{base_url}}"], "path": ["usuarios"] }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('JSON', () => pm.response.to.be.json);",
-                  "const data = pm.response.json();",
-                  "pm.test('tem quantidade (number)', () => pm.expect(data).to.have.property('quantidade').that.is.a('number'));",
-                  "pm.test('usuarios é array', () => pm.expect(data).to.have.property('usuarios').that.is.an('array'));"
-                ]
-              }
-            }
-          ]
-        },
+  "name": "GET /usuarios (lista)",
+  "request": {
+    "method": "GET",
+    "header": [
+      { "key": "Authorization", "value": "{{jwt}}", "type": "text" }
+    ],
+    "url": { "raw": "{{base_url}}/usuarios", "host": ["{{base_url}}"], "path": ["usuarios"] }
+  },
+  "event": [
+  {
+    "listen": "test",
+    "script": {
+      "type": "text/javascript",
+      "exec": [
+        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+        "pm.test('JSON', () => pm.response.to.be.json);",
+        "const body = pm.response.json();",
+        "pm.test('tem quantidade (number)', () => pm.expect(body).to.have.property('quantidade').that.is.a('number'));",
+        "pm.test('usuarios é array', () => pm.expect(body).to.have.property('usuarios').that.is.an('array'));"
+      ]
+    }
+  }
+]
+
+}
+,
         {
           "name": "POST /usuarios (criar)",
           "request": {
