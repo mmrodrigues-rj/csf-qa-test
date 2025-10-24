@@ -1,40 +1,39 @@
 {
-  "id": "c9e0d9d0-csf-qa-test-env",
+  "id": "csf-qa-test-local-env",
   "name": "CSF-QA-TEST - Local",
-  "description": "Environment da suíte. Ajuste base_url e as credenciais admin_* conforme o backend/ambiente.",
-  "_comment": "As variáveis abaixo são usadas nos scripts e requests.",
   "values": [
     {
       "key": "base_url",
       "value": "https://serverest.dev",
-      "enabled": true,
-      "description": "URL base da API sob teste (ex.: https://serverest.dev)."
+      "type": "default",
+      "enabled": true
     },
     {
       "key": "admin_email",
-      "value": "admin@exemplo.com",
-      "enabled": true,
-      "description": "E-mail do usuário administrador para login."
+      "value": "admin.qa.1761289133@exemplo.com",
+      "type": "default",
+      "enabled": true
     },
     {
       "key": "admin_password",
       "value": "123456",
-      "enabled": true,
-      "description": "Senha do administrador usada no login."
+      "type": "default",
+      "enabled": true
     },
     {
       "key": "jwt",
       "value": "",
-      "enabled": true,
-      "description": "Token JWT obtido após o login. É preenchido automaticamente pelo request de Login."
+      "type": "default",
+      "enabled": true
     },
     {
       "key": "createdUserId",
       "value": "",
-      "enabled": true,
-      "description": "ID do usuário criado no teste de POST /users. Usado pelos testes de GET/PUT/DELETE por id."
+      "type": "default",
+      "enabled": true
     }
   ],
   "_postman_variable_scope": "environment",
-  "_postman_exported_using": "Postman/CSF-QA-TEST"
+  "_postman_exported_at": "2025-10-24T23:59:00.000Z",
+  "_postman_exported_using": "Postman/11.16.0"
 }
