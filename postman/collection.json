@@ -251,10 +251,41 @@
             "url": { "raw": "{{base_url}}/usuarios", "host": ["{{base_url}}"], "path": ["usuarios"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Duplicado QA\",\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"123456\",\n  \"administrador\": \"true\"\n}"
+              "raw": "{\n  \"nome\": \"Duplicado QA\",\n  \"email\": \"teste.duplicado.fixed@exemplo.com\",\n  \"password\": \"123456\",\n  \"administrador\": \"true\"\n}"
             }
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const url = pm.variables.replaceIn('{{base_url}}/usuarios');",
+                  "const auth = pm.environment.get('jwt');",
+                  "const email = 'teste.duplicado.fixed@exemplo.com';",
+                  "",
+                  "pm.sendRequest({",
+                  "  url: url,",
+                  "  method: 'POST',",
+                  "  header: {",
+                  "    'Authorization': auth,",
+                  "    'Content-Type': 'application/json'",
+                  "  },",
+                  "  body: {",
+                  "    mode: 'raw',",
+                  "    raw: JSON.stringify({",
+                  "      nome: 'Usuario Duplicado Pre-Criado',",
+                  "      email: email,",
+                  "      password: '123456',",
+                  "      administrador: 'true'",
+                  "    })",
+                  "  }",
+                  "}, function(err, res) {",
+                  "  console.log('Pre-request criou usuario para duplicação:', res?.code);",
+                  "});"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
